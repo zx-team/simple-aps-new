@@ -16,7 +16,6 @@ public class TimePreferedVoter implements Voter {
 			public int compare(Detection o1, Detection o2) {
 				return o1.getWorkOrder().compareTo(o2.getWorkOrder());
 			}
-			
 		});
 		return detections.get(0);
 	}

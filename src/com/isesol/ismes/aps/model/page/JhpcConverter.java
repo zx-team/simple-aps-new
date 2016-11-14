@@ -116,6 +116,7 @@ public class JhpcConverter {
 					task.setNum(wo.getQuantity());
 					task.setName(String.valueOf(wo.getQuantity()));
 					task.setXh(wo.getBoxNum());
+					task.setScph(wo.getScph());
 					if (ljid.equals(wo.getPartId())) {
 						task.setPart(ljmc);
 					} else {
@@ -149,6 +150,8 @@ public class JhpcConverter {
 							Task task = new Task();
 							task.setLjid(ljid);
 							task.setZindex(50);
+							task.setGxzbs(gd.getGxzbs());
+							task.setGxzxh(gd.getGxzxh());
 							if (wo.getGxid().equals(process.getId())) {
 								task.setDisabled(false);
 								task.setColor(WorkOrderColor.NEW);
@@ -168,6 +171,7 @@ public class JhpcConverter {
 							task.setSplitBillId("");
 							task.setPcid(wo.getPcid());
 							task.setPcbh(wo.getPcbh());
+							task.setScph(wo.getScph());
 							task.setGxid(wo.getGxid());
 							task.setGdztdm(wo.getGdztdm());
 							task.setGdztmc(wo.getGdztmc());

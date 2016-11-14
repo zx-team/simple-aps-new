@@ -75,7 +75,7 @@ public class WorkOrderGap extends TimeRange {
 		}
 		for (int i = 0; i < unavais.size(); i++) {
 			DeviceUnavai unavai = unavais.get(i);
-			if (unavai.before(from)) {
+			if (unavai.completeBefore(from)) {
 				continue;
 			}
 			if (!unavai.intersect(from)) {
@@ -102,7 +102,7 @@ public class WorkOrderGap extends TimeRange {
 		int pos = -1;
 		for (int i = 0; i < unavais.size(); i++) {
 			// 找到第一个在from后面的unavai
-			if (unavais.get(i).after(from)) {
+			if (unavais.get(i).completeAfter(from)) {
 				pos = i;
 				break;
 			}

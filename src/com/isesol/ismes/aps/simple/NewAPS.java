@@ -6,24 +6,22 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import org.apache.commons.lang.StringUtils;
-
 import java.util.TreeMap;
 import java.util.UUID;
+
+import org.apache.commons.collections.CollectionUtils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.isesol.ismes.aps.model.Device;
-import com.isesol.ismes.aps.model.WorkOrderGap;
 import com.isesol.ismes.aps.model.DeviceUnavai;
 import com.isesol.ismes.aps.model.PrepareTime;
 import com.isesol.ismes.aps.model.Process;
 import com.isesol.ismes.aps.model.WorkOrder;
+import com.isesol.ismes.aps.model.WorkOrderGap;
 import com.isesol.ismes.aps.vote.Detection;
 import com.isesol.ismes.aps.vote.TimePreferedVoter;
 import com.isesol.ismes.aps.vote.Voter;
-import com.isesol.ismes.platform.module.Sys;
 
 public class NewAPS {
 
@@ -74,7 +72,7 @@ public class NewAPS {
 		} else {
 			Collections.sort(workOrders);
 			WorkOrder first = workOrders.get(0);
-			if (first.after(from)) {
+			if (first.completeAfter(from)) {
 				// 如果设备上第一个工单在开始排产时间只之后，就在工单列表中加个假的工单，时间为from，用于辅助计算
 				workOrders.add(0, new WorkOrder("", "", from, from));
 			}
@@ -94,7 +92,7 @@ public class NewAPS {
 				if (avaiTo - avaiFrom >= minSeconds * 1000) {
 					WorkOrderGap gap = new WorkOrderGap(avaiFrom, avaiTo);
 					gap.setLastWorkOrderGxId(current.getGxid());
-					if (gap.before(from)) {
+					if (gap.completeBefore(from)) {
 						continue;
 					} else {
 						if (gap.intersect(from) && (avaiTo - from < minSeconds * 1000)) {
@@ -110,7 +108,7 @@ public class NewAPS {
 			}
 			// 把最后的fake删掉
 			workOrders.remove(workOrders.size() - 1);
-			if (first.after(from)) {
+			if (first.completeAfter(from)) {
 				workOrders.remove(0);
 			}
 		}
@@ -130,10 +128,10 @@ public class NewAPS {
 			// 与avai相交的unavai集合
 			List<DeviceUnavai> suitables = Lists.newArrayList();
 			for (DeviceUnavai unavai : unavais) {
-				if (unavai.before(gap)) {
+				if (unavai.completeBefore(gap)) {
 					continue;
 				}
-				if (unavai.after(gap)) {
+				if (unavai.completeAfter(gap)) {
 					continue;
 				}
 				if (unavai.contain(gap)) {
@@ -218,22 +216,18 @@ public class NewAPS {
 		wo.setQuantity(quantity);
 		fromQuantitys.put(from.getTimeInMillis(), wo);
 		process(scph, partId, pcid, pcbh, firstProcess, fromQuantitys, per, min, max, false);
-		setSbWorkOrder(sbWorkOrder);
+		setSbWorkOrder(sbWorkOrder, quantity);
 		return System.currentTimeMillis() - start;
 	}
 	
-	private void setSbWorkOrder(Map<String, List<WorkOrder>> result) {
+	private void setSbWorkOrder(Map<String, List<WorkOrder>> result, int quantity) {
 		for (Entry<String, Map<String, List<WorkOrder>>> entry : gxSbWorkOrder.entrySet()) {
 			Map<String, List<WorkOrder>> sbWorkOrder = entry.getValue();
 			for (Entry<String, List<WorkOrder>> e : sbWorkOrder.entrySet()) {
 				String sbId = e.getKey();
 				List<WorkOrder> wos = e.getValue();
-				List<WorkOrder> workOrders = result.get(sbId);
-				if (workOrders == null) {
-					workOrders = Lists.newArrayList();
-					result.put(sbId, workOrders);
-				}
-				workOrders.addAll(wos);
+//				result.put(sbId, wos);
+				result.put(sbId, combineWorkOrders(wos, quantity));
 			}
 		}
 	}
@@ -276,10 +270,11 @@ public class NewAPS {
 				quantity -= detection.getWorkOrder().getQuantity();
 			}
 		}
-		if (process.previous() == null || (process.previous() != null && !whole)) {
-			// 因为第一序是分解方式的所以必须combine，非第一道序并且分解模式的条件下，进行合并工单
-			combineWorkOrders(process, maxQuantity);
-		}
+//		正祥不在每一道序进行合并，而是最后全部加工完成再合并
+//		if (process.previous() == null || (process.previous() != null && !whole)) {
+//			// 因为第一序是分解方式的所以必须combine，非第一道序并且分解模式的条件下，进行合并工单
+//			combineWorkOrders(process, maxQuantity);
+//		}
 
 		// 如果本序全部加工完成了，则做下一序的加工
 		Process nextProcess = process.next();
@@ -320,8 +315,9 @@ public class NewAPS {
 		}
 	}
 	private int seq = 0;
-	private String getBoxNum(String scph) {
-		return scph + "-" + StringUtils.leftPad(String.valueOf(++seq), 2, "0");
+	private String getBoxNum(String jgsl) {
+		return "(" + jgsl + ")" + (++seq);
+//		return StringUtils.leftPad(String.valueOf(++seq), 2, "0");
 	}
 	
 	/**
@@ -351,32 +347,116 @@ public class NewAPS {
 		return remaining < per ? remaining : per;
 	}
 	
-	private void combineWorkOrders(Process process, int maxQuantity) {
-		Map<String, List<WorkOrder>> sbWos = gxSbWorkOrder.get(process.getId());
-		if (sbWos == null || sbWos.isEmpty()) {
-			return;
+//	private void combineWorkOrders(Process process, int maxQuantity) {
+//		Map<String, List<WorkOrder>> sbWos = gxSbWorkOrder.get(process.getId());
+//		if (sbWos == null || sbWos.isEmpty()) {
+//			return;
+//		}
+//		for (Entry<String, List<WorkOrder>> entry : sbWos.entrySet()) {
+//			List<WorkOrder> combined = Lists.newArrayList();
+//			String sbId = entry.getKey();
+//			List<WorkOrder> wos = entry.getValue();
+//			if (wos != null && !wos.isEmpty() && wos.size() != 1) {
+//				for (int i = 0; i < wos.size(); i++) {
+//					WorkOrder wo = wos.get(i);
+//					if (i == 0) {
+//						combined.add(wo);
+//						continue;
+//					}
+//					WorkOrder last = combined.get(combined.size() - 1);
+//					if (last.combinable(wo, maxQuantity)) {
+//						last.combine(wo);
+//					} else {
+//						combined.add(wo);
+//					}
+//				}
+//				sbWos.put(sbId, combined);
+//			}
+//		}
+//	}
+	
+	private List<WorkOrder> combineWorkOrders(List<WorkOrder> wos, int quantity) {
+		List<WorkOrder> combined = Lists.newArrayList();
+		if (wos == null || wos.isEmpty() || wos.size() == 1) {
+			return wos;
 		}
-		for (Entry<String, List<WorkOrder>> entry : sbWos.entrySet()) {
-			List<WorkOrder> combined = Lists.newArrayList();
-			String sbId = entry.getKey();
-			List<WorkOrder> wos = entry.getValue();
-			if (wos != null && !wos.isEmpty() && wos.size() != 1) {
-				for (int i = 0; i < wos.size(); i++) {
-					WorkOrder wo = wos.get(i);
-					if (i == 0) {
-						combined.add(wo);
-						continue;
-					}
-					WorkOrder last = combined.get(combined.size() - 1);
-					if (last.combinable(wo, maxQuantity)) {
-						last.combine(wo);
-					} else {
-						combined.add(wo);
-					}
-				}
-				sbWos.put(sbId, combined);
+		for (int i = 0; i < wos.size(); i++) {
+			WorkOrder wo = wos.get(i);
+			if (i == 0) {
+				combined.add(wo);
+				continue;
+			}
+			WorkOrder last = combined.get(combined.size() - 1);
+			if (last.combinable(wo, quantity)) {
+				last.combine(wo);
+			} else {
+				combined.add(wo);
 			}
 		}
+		for (WorkOrder wo : combined) {
+			// 小生产任务包含的箱号排序
+			Collections.sort(wo.getBoxNums());
+			// 生成箱号表达式
+			wo.setBoxNum(getBoxNumPattern(wo.getBoxNums()));
+		}
+		return combined;
+	}
+	
+	/**
+	 * 箱号表达式样例:输入：(30)02,(50)01,(50)03,(50)05,(50)07,(50)08,(50)09 输出：(30)02,(50)01,(50)03,(50)05,(50)07-09
+	 * @param nums
+	 * @return
+	 */
+	private String getBoxNumPattern(List<String> nums) {
+		if (CollectionUtils.isEmpty(nums)) {
+			return "";
+		}
+		Collections.sort(nums);
+		// 根据加工数量分堆
+		Map<Integer, List<Integer>> quantityBoxNums = Maps.newLinkedHashMap();
+		for (String num : nums) {
+			int quantity = Integer.parseInt(num.substring(1, num.indexOf(")")));
+			int boxNum = Integer.parseInt(num.substring(num.indexOf(")") + 1));
+			List<Integer> boxNums = quantityBoxNums.get(quantity);
+			if (boxNums == null) {
+				boxNums = Lists.newArrayList();
+				quantityBoxNums.put(quantity, boxNums);
+			}
+			boxNums.add(boxNum);
+		}
+		String finalResult = "";
+		for (Entry<Integer, List<Integer>> entry : quantityBoxNums.entrySet()) {
+			int quantity = entry.getKey();
+			List<Integer> boxNums = entry.getValue();
+			Collections.sort(boxNums);
+			
+			String temp = "";
+			for (int i = 0; i < boxNums.size(); i++) {
+				if (i == 0) {
+					temp = boxNums.get(0) + "";
+					continue;
+				}
+				if (boxNums.get(i) - 1 == boxNums.get(i - 1)) {
+					// 与前箱号是连续的
+					temp += "|" + boxNums.get(i);
+				} else {
+					// 不连续
+					temp += "," + boxNums.get(i);
+				}
+			}
+			String result = "";
+			String[] tempArr = temp.split(",");
+			for (String s : tempArr) {
+				String[] arr = s.split("|");
+				if (arr.length == 1) {
+					result += "," + arr[0];
+				} else {
+					result += "," + arr[0] + "-" +arr[arr.length - 1];
+				}
+			}
+			finalResult += ";(" + quantity + ")" + result.substring(1);
+		}
+		return finalResult.substring(1);
 	}
 
 	/**
@@ -414,13 +494,14 @@ public class NewAPS {
 				String temp = boxNum;
 				if ("".equals(temp)) {
 					// 第一序的箱号在这赋值
-					temp = getBoxNum(scph);
+					temp = getBoxNum(quantity + "");
 				}
 				wo = new WorkOrder(getNewId(), temp);
 				wo.setPartId(partId);
 				wo.setQuantity(quantity);
 				wo.setPcid(pcid);
 				wo.setPcbh(pcbh);
+				wo.setScph(scph);
 				wo.setGxid(process.getId());
 				wo.setQuantity(quantity);
 				wo.setAvaiId(gap.getId());
@@ -476,5 +557,9 @@ public class NewAPS {
 			return avai.competent(from, timeConsuming * 1000L);
 		}
 	}
+	
+//	public static void main(String[] args) {
+//		System.out.println(getBoxNumPattern(Arrays.asList("(50)01,(30)02,(50)03,(50)05,(50)07,(50)08,(50)09".split(","))));
+//	}
 	
 }

@@ -51,13 +51,7 @@ public class TimeRange implements Comparable<TimeRange> {
 		if (this.same(o)) {
 			return 0;
 		}
-		if (this.before(o)) {
-			return -1;
-		}
-		if (this.after(o)) {
-			return 1;
-		}
-		return 0;
+		return this.from.compareTo(o.getFrom());
 	}
 	
 	public long getDiffMs() {
@@ -84,19 +78,36 @@ public class TimeRange implements Comparable<TimeRange> {
 		return false;
 	}
 	
-	public boolean before(TimeRange tr) {
+	/**
+	 * 当前时间段完全在参数时间段之前
+	 * @param tr
+	 * @return
+	 */
+	public boolean completeBefore(TimeRange tr) {
 		return this.getTo().compareTo(tr.getFrom()) <= 0;
 	}
-	
-	public boolean before(long timePoint) {
+	/**
+	 * 当前时间段完全在参数时间点之前
+	 * @param timePoint
+	 * @return
+	 */
+	public boolean completeBefore(long timePoint) {
 		return this.getTo().getTimeInMillis() <= timePoint;
 	}
-	
-	public boolean after(TimeRange tr) {
+	/**
+	 * 当前时间段完全在参数时间段之后
+	 * @param tr
+	 * @return
+	 */
+	public boolean completeAfter(TimeRange tr) {
 		return this.getFrom().compareTo(tr.getTo()) >= 0;
 	}
-	
-	public boolean after(long timePoint) {
+	/**
+	 * 当前时间段完全在参数时间点之后
+	 * @param timePoint
+	 * @return
+	 */
+	public boolean completeAfter(long timePoint) {
 		return this.getFrom().getTimeInMillis() >= timePoint;
 	}
 	

@@ -1,5 +1,9 @@
 package com.isesol.ismes.aps.model;
 
+import java.util.List;
+
+import com.google.common.collect.Lists;
+
 /**
  * 工单
  * @author wangxu
@@ -7,15 +11,19 @@ package com.isesol.ismes.aps.model;
  */
 public class WorkOrder extends TimeRange {
 	
+	private List<String> boxNums = Lists.newArrayList();
+	
 	public WorkOrder(String id, String boxNum, long from, long to) {
 		super(from, to);
 		this.id = id;
 		this.boxNum = boxNum;
+		boxNums.add(boxNum);
 	}
 	
 	public WorkOrder(String id, String boxNum) {
 		this.id = id;
 		this.boxNum = boxNum;
+		boxNums.add(boxNum);
 	}
 	
 	private boolean combined = false;
@@ -48,7 +56,7 @@ public class WorkOrder extends TimeRange {
 	 */
 	private String id;
 	/**
-	 * 箱号
+	 * 工单未合并之前的箱号
 	 */
 	private String boxNum;
 	/**
@@ -71,6 +79,10 @@ public class WorkOrder extends TimeRange {
 	 * 批次编号
 	 */
 	private String pcbh;
+	/**
+	 * 生产批号
+	 */
+	private String scph;
 	/**
 	 * 工序id
 	 */
@@ -176,6 +188,14 @@ public class WorkOrder extends TimeRange {
 		this.gdztdm = gdztdm;
 	}
 
+	public String getScph() {
+		return scph;
+	}
+
+	public void setScph(String scph) {
+		this.scph = scph;
+	}
+
 	public String getGdztmc() {
 		return gdztmc;
 	}
@@ -238,6 +258,14 @@ public class WorkOrder extends TimeRange {
 		return true;
 	}
 	
+	public List<String> getBoxNums() {
+		return boxNums;
+	}
+
+	public void addBoxNum(String boxNum) {
+		this.boxNums.add(boxNum);
+	}
+
 	public boolean combinable(WorkOrder wo) {
 		throw new RuntimeException("请使用带参数的combineable方法");
 	}
@@ -245,10 +273,11 @@ public class WorkOrder extends TimeRange {
 	public void combine(WorkOrder wo) {
 		super.combine(wo);
 		this.quantity += wo.getQuantity();
+		this.addBoxNum(wo.getBoxNum());
 	}
 
 	@Override
 	public String toString() {
-		return "W[" + id +"]Q[" + quantity + "]" + super.toString();
+		return "W[" + boxNum +"]Q[" + quantity + "]" + super.toString();
 	}
 }

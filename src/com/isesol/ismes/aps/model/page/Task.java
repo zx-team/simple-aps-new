@@ -22,6 +22,7 @@ public class Task {
 	private Date to;
 	private int num;
 	private String xh; //箱号
+	private String scph; // 生产批号
 	private String pcid;
 	private String pcbh;
 	private String gxid;
@@ -34,6 +35,8 @@ public class Task {
 	private String classes;
 	private boolean overlap = false;
 	private int zindex;
+	private int gxzbs; // -1 首序， 1尾序， 0其他
+	private int gxzxh; // 工序组序号
 	private String radius = "7px !important";
 	
 	public int getNum() {
@@ -192,5 +195,22 @@ public class Task {
 	public void setLjid(String ljid) {
 		this.ljid = ljid;
 	}
-	
+	public String getScph() {
+		return scph;
+	}
+	public void setScph(String scph) {
+		this.scph = scph;
+	}
+	public int getGxzbs() {
+		return gxzbs;
+	}
+	public void setGxzbs(int gxzbs) {
+		this.gxzbs = gxzbs;
+	}
+	public int getGxzxh() {
+		return gxzxh;
+	}
+	public void setGxzxh(int gxzxh) {
+		this.gxzxh = gxzxh;
+	}
 }
